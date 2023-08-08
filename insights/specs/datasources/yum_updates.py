@@ -2,6 +2,7 @@
 Custom datasource for collecting yum updates
 """
 import json
+import logging
 import time
 
 from insights import datasource, HostContext, SkipComponent
@@ -203,8 +204,8 @@ except ImportError:
         UpdatesManager = None
 
 
-@datasource(HostContext, [IsRhel7, IsRhel8, IsRhel9])
-def yum_updates(_broker):
+@datasource(HostContext, [IsRhel7, IsRhel8, IsRhel9], timeout=0)
+def yum_updates(broker):
     """
     This datasource provides a list of available updates on the system.
     It uses the yum python library installed locally, and collects list of
@@ -228,6 +229,7 @@ def yum_updates(_broker):
               ]
             }
           },
+          "build_pkgcache": false,
           "metadata_time": "2021-01-01T09:39:45Z"
         }
 
@@ -239,13 +241,16 @@ def yum_updates(_broker):
     if UpdatesManager is None:
         raise SkipComponent()
 
-    with UpdatesManager() as umgr:
+    build_pkgcache = getattr(broker.get('client_config', object), 'build_packagecache', False)
+
+    with UpdatesManager(build_pkgcache=build_pkgcache) as umgr:
         umgr.load()
 
         response = {
             "releasever": umgr.releasever,
             "basearch": umgr.basearch,
             "update_list": {},
+            "build_pkgcache": build_pkgcache,
         }
 
         for pkg in umgr.installed_packages():
