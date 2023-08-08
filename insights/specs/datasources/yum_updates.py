@@ -21,8 +21,9 @@ except ImportError:
 
 class DnfManager:
     """ Performs package resolution on dnf based systems """
-    def __init__(self):
+    def __init__(self, build_pkgcache=False):
         self.base = dnf.base.Base()
+        self.base.conf.cacheonly = not build_pkgcache
         # releasever and basearchs are correctly set after calling load()
         self.releasever = dnf.rpm.detect_releasever("/")
         self.basearch = dnf.rpm.basearch(hawkey.detect_arch())
@@ -52,6 +53,7 @@ class DnfManager:
         return sorted_cmp([pkg for pkg in pkgs if pkg.reponame != "@System"], self.pkg_cmp)
 
     def load(self):
+        logging.disable(logging.WARNING)
         cli = dnf.cli.Cli(self.base)
         cli._read_conf_file()
         subst = self.base.conf.substitutions
@@ -60,18 +62,22 @@ class DnfManager:
         if subst.get("basearch"):
             self.basearch = subst["basearch"]
 
-        self.base.conf.cacheonly = True
         self.base.read_all_repos()
+
         self.packages = hawkey.Query(hawkey.Sack())
-        if version(dnf.VERSION) >= version("4.7.0"):
-            try:
-                # do not use standard self.base.fill_sack() it does not respect cacheonly
+        try:
+            if version(dnf.VERSION) >= version("4.7.0") and self.base.conf.cacheonly:
                 self.base.fill_sack_from_repos_in_cache(load_system_repo=True)
                 self.packages = self.base.sack.query()
-            except dnf.exceptions.RepoError:
-                # RepoError is raised when cache is empty
-                pass
+            elif not self.base.conf.cacheonly:
+                self.base.fill_sack()
+                self.packages = self.base.sack.query()
+        except dnf.exceptions.RepoError:
+            # RepoError is raised when cache is empty
+            pass
+
         self.repos = self.base.repos
+        logging.disable(logging.NOTSET)
 
     def installed_packages(self):
         return self.packages.installed().run()
