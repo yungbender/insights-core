@@ -116,9 +116,9 @@ class DnfManager:
 
 class YumManager(DnfManager):
     """ Performs package resolution on yum based systems """
-    def __init__(self):
+    def __init__(self, build_pkgcache=False):
         self.base = yum.YumBase()
-        self.base.doGenericSetup(cache=1)
+        self.base.doGenericSetup(cache=0 if build_pkgcache else 1)
         self.releasever = self.base.conf.yumvar['releasever']
         self.basearch = self.base.conf.yumvar['basearch']
         self.packages = []
@@ -138,9 +138,18 @@ class YumManager(DnfManager):
         return sorted_cmp(pkgs, self.pkg_cmp)
 
     def load(self):
-        self.base.doRepoSetup()
         try:
+            self.base.doRepoSetup()
             self.base.doSackSetup()
+        except yum.Errors.RepoError:
+            # RepoError is raised when cache is empty
+            pass
+        except AttributeError:
+            # backwards compatibility, because yum is removing these setup functions in future
+            # and moving the setups to be getters (https://github.com/rpm-software-management/yum/blob/master/yum/__init__.py#L1099)
+            pass
+
+        try:
             self.packages = self.base.pkgSack.returnPackages()
         except yum.Errors.RepoError:
             # RepoError is raised when cache is empty
