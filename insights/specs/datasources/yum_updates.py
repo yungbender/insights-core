@@ -141,7 +141,7 @@ class YumManager(DnfManager):
         if vercmp != 0:
             return vercmp
         if a_repoid != b_repoid:
-            return -1 if a_repoid < b.repo_id else 1
+            return -1 if a_repoid < b_repoid else 1
         return 0
 
     def sorted_pkgs(self, pkg_tups):
@@ -168,13 +168,6 @@ class YumManager(DnfManager):
         except yum.Errors.RepoError:
             # RepoError is raised when cache is empty
             pass
-        self.repos = self.base.repos.repos
-        self._build_updict()
-
-    def _build_updict(self):
-        self.updict = {}
-        for pkg in self.packages:
-            self.updict.setdefault(pkg.na, []).append(pkg)
 
     def installed_packages(self):
         return self.base.rpmdb.returnPackages()
@@ -281,21 +274,24 @@ def yum_updates(broker):
             nevra, updates_list = umgr.updates(pkg)
             if updates_list:
                 out_list = []
-                update_list = umgr.sorted_pkgs(updates_list)
+                updates_list = umgr.sorted_pkgs(updates_list)
 
-                for p in update_list:
-                    pkg_dict = {
+                for p in updates_list:
+                    pkg = {
                         "package": umgr.pkg_nevra(p),
                         "repository": umgr.pkg_repo(p),
                         "basearch": response["basearch"],
                         "releasever": response["releasever"],
                     }
 
-                    erratum = umgr.advisory(p)
-                    if erratum:
-                        pkg_dict["erratum"] = erratum
-
-                    out_list.append(pkg_dict)
+                    advisories = umgr.sorted_advisories(p)
+                    if advisories:
+                        for advisory in advisories:
+                            pkg_errata = pkg.copy()
+                            pkg_errata["erratum"] = advisory
+                            out_list.append(pkg_errata)
+                    else:
+                        out_list.append(pkg)
 
                 response["update_list"][nevra] = {"available_updates": out_list}
 
