@@ -102,9 +102,12 @@ class DnfManager:
         return pkg.reponame
 
     @staticmethod
-    def advisory(pkg):
-        errata = pkg.get_advisories(hawkey.EQ)
-        return errata[0].id if len(errata) > 0 else None
+    def sorted_advisories(pkg):
+        advisories = pkg.get_advisories(hawkey.EQ)
+        if advisories:
+            advisories_ids = map(lambda advisory: advisory.id, advisories)
+            return sorted(advisories_ids)
+        return []
 
     def last_update(self):
         last_ts = 0
