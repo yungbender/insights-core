@@ -338,6 +338,7 @@ class Specs(SpecSet):
     lpfc_max_luns = RegistryPoint()
     lpstat_p = RegistryPoint()
     lpstat_protocol_printers = RegistryPoint()
+    lpstat_queued_jobs_count = RegistryPoint()
     # New `ls` Specs
     ls_la = RegistryPoint()
     ls_la_dirs = RegistryPoint(filterable=True)
@@ -565,6 +566,7 @@ class Specs(SpecSet):
     podman_list_images = RegistryPoint()
     postconf = RegistryPoint(filterable=True)
     postconf_builtin = RegistryPoint(filterable=True)
+    postfix_master = RegistryPoint()
     postgresql_conf = RegistryPoint()
     postgresql_log = RegistryPoint(multi_output=True, filterable=True)
     prev_uploader_log = RegistryPoint()
